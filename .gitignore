@@ -1,0 +1,8 @@
+.eunit
+deps/
+ebin/
+ebin_dialyzer/
+TAGS
+.DS_Store
+doc/*.html
+*.beam
