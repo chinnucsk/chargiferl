@@ -5,9 +5,9 @@
 %% Application callbacks
 -export([start/2,
          stop/1,
-         list_customers/1
-         % customer_by_id/1,
-         % customer_by_reference/1,
+         list_customers/0,
+         customer_by_id/1,
+         customer_by_reference/1
          % create_customer/1,
          % update_customer/1,
          % customer_subscriptions/1,
@@ -55,6 +55,16 @@
 -type url() :: string().
 -type body() :: string().
 
+-record(customer, {
+          first_name :: string(),
+          last_name :: string(),
+          email :: string(),
+          organization :: string(),
+          reference :: string()
+          }).
+
+-type customer() :: #customer{}.
+
 -spec send_req(url(), headerlist(), method()) -> response().
 send_req(Url, HeaderList, Method) ->
     ibrowse:send_req(Url, HeaderList, Method).
@@ -71,12 +81,11 @@ get(Url, HeaderList) ->
 % put(Url, HeaderList, Body) ->
 %     send_req(Url, HeaderList, put, Body).
 
-% -spec post(url(), headerlist(), body()) -> response().
-% post(Url, HeaderList, Body) ->
-%     send_req(Url, HeaderList, post, Body).
+-spec post(url(), headerlist(), body()) -> response().
+post(Url, HeaderList, Body) ->
+    send_req(Url, HeaderList, post, Body).
 
 start(_StartType, _StartArgs) ->
-    [application:start(A) || A <- [sasl, crypto, public_key, ssl, ibrowse, ejson]],
     chargify_sup:start_link().
 
 stop(_State) ->
@@ -86,44 +95,33 @@ stop(_State) ->
 build_url(ResourcePath) ->
     "https://opscode-preprod.chargify.com" ++ ResourcePath.
 
-% -spec build_body(bodylist()) -> string().
-% build_body(BodyList) ->
-    
+-spec build_body(tuple()) -> string().
+build_body(Body) ->
+    ejson:encode({[Body]}).
 
 -spec add_auth(headerlist()) -> headerlist().
 add_auth(HeaderList) ->
-    AuthorizationData = "Basic " ++ binary_to_list(base64:encode("x:mTTHZMYQZyR72g-bGkux")),
-    [{authorization, AuthorizationData } | HeaderList].
-        
-list_customers(_Options) ->
+    AuthorizationData = "Basic " ++ binary_to_list(base64:encode("mTTHZMYQZyR72g-bGkux:x")),
+    [{"Authorization", AuthorizationData } | HeaderList].
+
+-spec list_customers() -> [customer()].
+list_customers() ->
     ResourcePath = "/customers.json",
     get(build_url(ResourcePath), add_auth([{accept, "application/json"}])).
-    
-% customer_by_id(ChargifyId) ->
-%     ResourcePath = "/customers/" ++ ChargifyId ++ ".json",
-%     get(build_url(ResourcePath), add_auth([])).
-%     %   request = get("/customers/#{chargify_id}.json")
-%     %   success = request.code == 200
-%     %   response = Hashie::Mash.new(request).customer if success
-%     %   Hashie::Mash.new(response || {}).update(:success? => success)
-%     % end
 
-% customer_by_reference(ReferenceId) ->
-%     ResourcePath = "/customers/lookup.json?reference=" ++ ReferenceId,
-%     get(build_url(ResourcePath), add_auth([])).
-%     %   request = get("/customers/lookup.json?reference=#{reference_id}")
-%     %   success = request.code == 200
-%     %   response = Hashie::Mash.new(request).customer if success
-%     %   Hashie::Mash.new(response || {}).update(:success? => success)
-%     % end
+-spec customer_by_id(string()) -> customer().
+customer_by_id(ChargifyId) ->
+    ResourcePath = "/customers/" ++ ChargifyId ++ ".json",
+    get(build_url(ResourcePath), add_auth([{accept, "application/json"}])).
+
+-spec customer_by_reference(string()) -> customer().
+customer_by_reference(ReferenceId) ->
+    ResourcePath = "/customers/lookup.json?reference=" ++ ReferenceId,
+    get(build_url(ResourcePath), add_auth([{accept, "application/json"}])).
     
-% create_customer(Info) ->
-%     ResourcePath = "/customers.json",
-%     post(build_url(ResourcePath), add_auth([]), build_body([{customer, Info}])).
-%     %   response = Hashie::Mash.new(post("/customers.json", :body => {:customer => info}))
-%     %   return response.customer if response.customer
-%     %   response
-%     % end
+create_customer(Info) ->
+    ResourcePath = "/customers.json",
+    post(build_url(ResourcePath), add_auth([]), build_body({customer, Info})).
 
 %     % * first_name (Required)
 %     % * last_name (Required)

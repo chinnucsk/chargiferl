@@ -8,7 +8,12 @@
   {registered, [chargify]},
   {applications, [
                   kernel,
-                  stdlib
+                  stdlib,
+                  crypto,
+                  public_key,
+                  ssl,
+                  ibrowse,
+                  ejson
                  ]},
   {mod, { chargify_app, []}},
   {env, []}
