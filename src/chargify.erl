@@ -70,7 +70,7 @@
 %% -type headervalue() :: string().
 -type response() :: {ok, status, responseheaders, responsebody} | {ibrowse_req_id, req_id()} | {error, reason}.
 -type req_id() :: term().
-%% -type responsebody() :: string() | {file, filename}.
+-type responsebody() :: string() | {file, filename}.
 %% -type reason() :: term().
 %% -type filename() :: string().
 -type url() :: string().
@@ -139,29 +139,36 @@ init([ChargifyState | _Rest]) ->
 %     {reply, Reply, State};
 handle_call(list_customers, _From, State) ->
     ResourcePath = "/customers.json",
-    Reply = get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])),
-    {reply, Reply, State};
+    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])),
+    {reply, ejson:decode(ResponseBody), State};
 handle_call({customer_by_id, ChargifyId}, _From, State) ->
     ResourcePath = "/customers/" ++ ChargifyId ++ ".json",
-    get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]));
+    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])),
+    {reply, ejson:decode(ResponseBody), State};
 handle_call({customer_by_reference, ChargifyReference}, _From, State) ->
     ResourcePath = "/customers/lookup.json?reference=" ++ ChargifyReference,
-    get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]));
+    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])),
+    {reply, ejson:decode(ResponseBody), State};
 handle_call({create_customer, Info}, _From, State) ->
     ResourcePath = "/customers.json",
-    post(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]), build_body({customer, Info}));
+    Reply = post(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]), build_body({customer, Info})),
+    {reply, Reply, State};
 handle_call({update_customer, Info}, _From, State) ->
     ResourcePath = "/customers.json",
-    put(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]), build_body({customer, Info}));
+    Reply = put(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]), build_body({customer, Info})),
+    {reply, Reply, State};
 handle_call({customer_subscriptions, ChargifyId}, _From, State) ->
     ResourcePath = "/customers/" ++ ChargifyId ++ "/subscriptions.json",
-    get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]));
+    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])),
+    {reply, ejson:decode(ResponseBody), State};
 handle_call({subscription, SubscriptionId}, _From, State) ->
     ResourcePath = "/subscriptions/" ++ SubscriptionId ++ ".json",
-    get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]));
+    Reply = get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])),
+    {reply, Reply, State};
 handle_call(list_products, _From, State) ->
     ResourcePath = "/products.json",
-    get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])).
+    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])),
+    {reply, ejson:decode(ResponseBody), State}.
 
 %%--------------------------------------------------------------------
 %% @private
