@@ -55,7 +55,11 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {}).
+-record(state, {
+          subdomain :: string(),
+          api_secret :: string()
+          }).
+-type state() :: #state{}.
 
 -type value() :: term().
 -type header() :: atom() | string().
@@ -74,10 +78,7 @@
 -type url() :: string().
 -type body() :: string().
 
--record(chargify_state, {
-          subdomain :: string(),
-          api_secret :: string()
-          }).
+
 -record(customer, {
           first_name :: string(),
           last_name :: string(),
@@ -86,7 +87,7 @@
           reference :: string()
           }).
 
--type chargify_state() :: #chargify_state{}.
+
 -type customer() :: #customer{}.
 
 %%%===================================================================
@@ -226,22 +227,22 @@ get(Url, HeaderList) ->
 post(Url, HeaderList, Body) ->
     send_req(Url, HeaderList, post, Body).
 
--spec build_url(chargify_state(), string()) -> string().
+-spec build_url(state(), string()) -> string().
 build_url(ChargifyState, ResourcePath) ->
-    "https://" ++ ChargifyState#chargify_state.subdomain ++ ".chargify.com" ++ ResourcePath.
+    "https://" ++ ChargifyState#state.subdomain ++ ".chargify.com" ++ ResourcePath.
 
 -spec build_body(tuple()) -> string().
 build_body(Body) ->
     ejson:encode({[Body]}).
 
--spec add_auth(chargify_state(), headerlist()) -> headerlist().
+-spec add_auth(state(), headerlist()) -> headerlist().
 add_auth(ChargifyState, HeaderList) ->
-    AuthorizationData = "Basic " ++ binary_to_list(base64:encode(ChargifyState#chargify_state.subdomain ++ ":x")),
+    AuthorizationData = "Basic " ++ binary_to_list(base64:encode(ChargifyState#state.subdomain ++ ":x")),
     [{"Authorization", AuthorizationData } | HeaderList].
 
 -spec list_customers() -> [customer()].
 list_customers() ->
-    ChargifyState = #chargify_state{subdomain = "opscode-preprod",
+    ChargifyState = #state{subdomain = "opscode-preprod",
                                     api_secret = "mTTHZMYQZyR72g-bGkux"},
     ResourcePath = "/customers.json",
     get(build_url(ChargifyState, ResourcePath), add_auth(ChargifyState,[{accept, "application/json"}])).
@@ -250,21 +251,21 @@ list_customers() ->
 customer_by_id(ChargifyId) when is_integer(ChargifyId) ->
     customer_by_id(binary_to_list(ChargifyId));
 customer_by_id(ChargifyId) when is_list(ChargifyId) ->
-    ChargifyState = #chargify_state{subdomain = "opscode-preprod",
+    ChargifyState = #state{subdomain = "opscode-preprod",
                                     api_secret = "mTTHZMYQZyR72g-bGkux"},
     ResourcePath = "/customers/" ++ ChargifyId ++ ".json",
     get(build_url(ChargifyState, ResourcePath), add_auth(ChargifyState,[{accept, "application/json"}])).
 
 -spec customer_by_reference(string()) -> customer().
 customer_by_reference(ReferenceId) ->
-    ChargifyState = #chargify_state{subdomain = "opscode-preprod",
+    ChargifyState = #state{subdomain = "opscode-preprod",
                                     api_secret = "mTTHZMYQZyR72g-bGkux"},
     ResourcePath = "/customers/lookup.json?reference=" ++ ReferenceId,
     get(build_url(ChargifyState, ResourcePath), add_auth(ChargifyState,[{accept, "application/json"}])).
 
 -spec create_customer(customer()) -> string().
 create_customer(Info) ->
-    ChargifyState = #chargify_state{subdomain = "opscode-preprod",
+    ChargifyState = #state{subdomain = "opscode-preprod",
                                     api_secret = "mTTHZMYQZyR72g-bGkux"},    
     ResourcePath = "/customers.json",
     post(build_url(ChargifyState, ResourcePath), add_auth(ChargifyState,[{accept, "application/json"}]), build_body({customer, Info})).
