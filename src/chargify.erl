@@ -258,17 +258,17 @@ add_auth(ChargifyState, HeaderList) ->
     AuthorizationData = "Basic " ++ binary_to_list(base64:encode(ChargifyState#chargify_state.api_secret ++ ":x")),
     [{"Authorization", AuthorizationData } | HeaderList].
 
--spec list_customers() -> [customer()].
+-spec list_customers() -> [read_customer()].
 list_customers() ->
     gen_server:call(?MODULE, list_customers).
 
--spec customer_by_id(string() | integer()) -> customer().
+-spec customer_by_id(string() | integer()) -> read_customer().
 customer_by_id(ChargifyId) when is_integer(ChargifyId) ->
     customer_by_id(integer_to_list(ChargifyId));
 customer_by_id(ChargifyId) when is_list(ChargifyId) ->
     gen_server:call(?MODULE, {customer_by_id, ChargifyId}).
 
--spec customer_by_reference(string()) -> customer().
+-spec customer_by_reference(string()) -> read_customer().
 customer_by_reference(ChargifyReference) ->
     gen_server:call(?MODULE, {customer_by_reference, ChargifyReference}).
 
@@ -278,11 +278,11 @@ create_customer(Info) ->
 
 -spec create_customer(string(),string(),string(),string()) -> string().
 create_customer(FirstName, LastName, Email, Organization) ->
-    gen_server:call(?MODULE, {create_customer, #customer{first_name = FirstName, last_name = LastName,
+    gen_server:call(?MODULE, {create_customer, #create_customer{first_name = FirstName, last_name = LastName,
                                                          email = Email, organization = Organization}}).
 -spec create_customer(string(),string(),string(),string(),string()) -> string().
 create_customer(FirstName, LastName, Email, Organization, Reference) ->
-    gen_server:call(?MODULE, {create_customer, #customer{first_name = FirstName, last_name = LastName,
+    gen_server:call(?MODULE, {create_customer, #create_customer{first_name = FirstName, last_name = LastName,
                                                          email = Email, organization = Organization,
                                                          reference = Reference}}).
 % -spec create_customer(string(),string(),string(),string(),string(), address(), string()) -> string().

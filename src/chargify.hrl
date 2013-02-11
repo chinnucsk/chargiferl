@@ -4,7 +4,7 @@
           }).
 -type chargify_state() :: #chargify_state{}.
 
--record(customer, {
+-record(read_customer, {
           id      :: integer(),
           email :: string(),
           
@@ -27,7 +27,7 @@
           created_at :: string()
           }).
 
--type customer() :: #customer{}.
+-type read_customer() :: #read_customer{}.
 
 -record(create_customer, {
           email :: string(),
@@ -60,4 +60,31 @@
           }).
 
 -type address() :: #address{}.
+
+-record(chargify_product, {
+          id :: integer(),
+          name :: string(),
+          handle :: string(),
+          trial_interval_unit :: string(),
+          trial_interval :: string(),          
+          trial_price_in_cents :: integer(),
+          expiration_interval :: string(),          
+          expiration_interval_unit :: string(),
+          return_url :: string(),
+          return_params :: string(),          
+          description :: string(),
+          accounting_code :: string(),
+          initial_charge_in_cents :: integer(),
+          interval :: string(),
+          product_family :: tuple(),
+          require_credit_card :: boolean(),          
+          request_credit_card :: boolean(),
+          interval_unit :: string(),
+          price_in_cents :: integer(),
+          created_at :: string(),          
+          archived_at :: string(),
+          updated_at :: string()
+          }).
           
+          
+-type chargify_product() :: #chargify_product{}.
