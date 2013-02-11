@@ -1,7 +1,7 @@
 DEPS = deps/ejson \
        deps/ibrowse
 
-all: compile generate
+all: compile
 
 clean:
 	@rebar skip_deps=true clean
