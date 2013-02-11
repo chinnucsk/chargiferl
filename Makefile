@@ -1,7 +1,7 @@
 DEPS = deps/ejson \
        deps/ibrowse
 
-all: compile eunit
+all: compile generate
 
 clean:
 	@rebar skip_deps=true clean
@@ -26,8 +26,12 @@ $(DEPS):
 eunit: compile
 	@rebar skip_deps=true eunit
 
+generate:
+	@rebar generate
+
 test: eunit
 
 tags:
 	find src deps -name "*.[he]rl" -print | etags -
+
 
