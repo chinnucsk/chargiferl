@@ -272,16 +272,32 @@ customer_by_id(ChargifyId) when is_list(ChargifyId) ->
 customer_by_reference(ChargifyReference) ->
     gen_server:call(?MODULE, {customer_by_reference, ChargifyReference}).
 
--spec create_customer(customer()) -> string().
+-spec create_customer(create_customer()) -> string().
 create_customer(Info) ->
     gen_server:call(?MODULE, {create_customer, Info}).
+
+-spec create_customer(string(),string(),string(),string()) -> string().
+create_customer(FirstName, LastName, Email, Organization) ->
+    gen_server:call(?MODULE, {create_customer, #customer{first_name = FirstName, last_name = LastName,
+                                                         email = Email, organization = Organization}}).
+-spec create_customer(string(),string(),string(),string(),string()) -> string().
+create_customer(FirstName, LastName, Email, Organization, Reference) ->
+    gen_server:call(?MODULE, {create_customer, #customer{first_name = FirstName, last_name = LastName,
+                                                         email = Email, organization = Organization,
+                                                         reference = Reference}}).
+% -spec create_customer(string(),string(),string(),string(),string(), address(), string()) -> string().
+% create_customer(FirstName, LastName, Email, Organization, Reference, Address, Phone) ->
+    
+
 
 %     % * first_name (Required)
 %     % * last_name (Required)
 %     % * email (Required)
 %     % * organization (Optional) Company/Organization name
 %     % * reference (Optional, but encouraged) The unique identifier used within your own application for this customer
-%     % 
+%     %
+-spec update_customer(create_customer()) ->
+     string().
 update_customer(Info) ->
     gen_server:call(?MODULE, {update_customer, Info}).
 
