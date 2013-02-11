@@ -26,8 +26,10 @@
          customer_by_reference/1,
          create_customer/1,
          update_customer/1,
-         customer_subscriptions/1
-         % subscription/1,
+         customer_subscriptions/1,
+         get_subscription/1,
+         list_products/0         
+         
          % create_subscription/1,
          % update_subscription/2,
          % cancel_subscription/2,
@@ -35,7 +37,7 @@
          % charge_subscription/2,
          % migrate_subscription/2,
          % adjust_subscription/2,
-         % list_products/0,
+
          % product/1,
          % product_by_handle/1,
          % list_subscription_usage/2,
@@ -153,8 +155,13 @@ handle_call({update_customer, Info}, _From, State) ->
     put(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]), build_body({customer, Info}));
 handle_call({customer_subscriptions, ChargifyId}, _From, State) ->
     ResourcePath = "/customers/" ++ ChargifyId ++ "/subscriptions.json",
+    get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]));
+handle_call({subscription, SubscriptionId}, _From, State) ->
+    ResourcePath = "/subscriptions/" ++ SubscriptionId ++ ".json",
+    get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]));
+handle_call(list_products, _From, State) ->
+    ResourcePath = "/products.json",
     get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -276,12 +283,13 @@ customer_subscriptions(ChargifyId) when is_integer(ChargifyId) ->
 customer_subscriptions(ChargifyId) when is_list(ChargifyId) ->
     gen_server:call(?MODULE, {customer_subscriptions, ChargifyId}).
 
-% subscription(_SubscriptionId) ->
-%     %   raw_response = get("/subscriptions/#{subscription_id}.json")
-%     %   return nil if raw_response.code != 200
-%     %   Hashie::Mash.new(raw_response).subscription
-%     % end
-%     pass().
+get_subscription(SubscriptionId) when is_integer(SubscriptionId) ->
+    get_subscription(integer_to_list(SubscriptionId));
+get_subscription(SubscriptionId) when is_list(SubscriptionId) ->
+    gen_server:call(?MODULE, {subscription, SubscriptionId}).
+
+list_products() ->
+    gen_server:call(?MODULE, list_products).    
 
 %     % Returns all elements outputted by Chargify plus:
 %     % response.success? -> true if response code is 201, false otherwise
@@ -350,11 +358,6 @@ customer_subscriptions(ChargifyId) when is_list(ChargifyId) ->
 %     % end
 %     pass().
 
-% list_products() ->
-%       % products = get("/products.json")
-%       % products.map{|p| Hashie::Mash.new p['product']}
-%     pass().
-    
 % product(_ProductId) ->
 % %      Hashie::Mash.new( get("/products/#{product_id}.json")).product
 %    pass().
