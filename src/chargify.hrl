@@ -1,8 +1,8 @@
--record(state, {
+-record(chargify_state, {
           subdomain :: string(),
           api_secret :: string()
           }).
--type state() :: #state{}.
+-type chargify_state() :: #chargify_state{}.
 
 -record(customer, {
           first_name :: string(),

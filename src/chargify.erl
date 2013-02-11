@@ -24,9 +24,9 @@
          list_customers/0,
          customer_by_id/1,
          customer_by_reference/1,
-         create_customer/1
-         % update_customer/1,
-         % customer_subscriptions/1,
+         create_customer/1,
+         update_customer/1,
+         customer_subscriptions/1
          % subscription/1,
          % create_subscription/1,
          % update_subscription/2,
@@ -147,8 +147,15 @@ handle_call({customer_by_reference, ChargifyReference}, _From, State) ->
     get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]));
 handle_call({create_customer, Info}, _From, State) ->
     ResourcePath = "/customers.json",
-    post(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]), build_body({customer, Info})).
-    
+    post(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]), build_body({customer, Info}));
+handle_call({update_customer, Info}, _From, State) ->
+    ResourcePath = "/customers.json",
+    put(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]), build_body({customer, Info}));
+handle_call({customer_subscriptions, ChargifyId}, _From, State) ->
+    ResourcePath = "/customers/" ++ ChargifyId ++ "/subscriptions.json",
+    get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])).
+
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -216,25 +223,25 @@ send_req(Url, HeaderList, Method, Body) ->
 get(Url, HeaderList) ->
     send_req(Url, HeaderList, get).
 
-% -spec put(url(), headerlist(), body()) -> response().
-% put(Url, HeaderList, Body) ->
-%     send_req(Url, HeaderList, put, Body).
+-spec put(url(), headerlist(), body()) -> response().
+put(Url, HeaderList, Body) ->
+    send_req(Url, HeaderList, put, Body).
 
 -spec post(url(), headerlist(), body()) -> response().
 post(Url, HeaderList, Body) ->
     send_req(Url, HeaderList, post, Body).
 
--spec build_url(state(), string()) -> string().
+-spec build_url(chargify_state(), string()) -> string().
 build_url(ChargifyState, ResourcePath) ->
-    "https://" ++ ChargifyState#state.subdomain ++ ".chargify.com" ++ ResourcePath.
+    "https://" ++ ChargifyState#chargify_state.subdomain ++ ".chargify.com" ++ ResourcePath.
 
 -spec build_body(tuple()) -> string().
 build_body(Body) ->
     ejson:encode({[Body]}).
 
--spec add_auth(state(), headerlist()) -> headerlist().
+-spec add_auth(chargify_state(), headerlist()) -> headerlist().
 add_auth(ChargifyState, HeaderList) ->
-    AuthorizationData = "Basic " ++ binary_to_list(base64:encode(ChargifyState#state.api_secret ++ ":x")),
+    AuthorizationData = "Basic " ++ binary_to_list(base64:encode(ChargifyState#chargify_state.api_secret ++ ":x")),
     [{"Authorization", AuthorizationData } | HeaderList].
 
 -spec list_customers() -> [customer()].
@@ -261,20 +268,13 @@ create_customer(Info) ->
 %     % * organization (Optional) Company/Organization name
 %     % * reference (Optional, but encouraged) The unique identifier used within your own application for this customer
 %     % 
-% update_customer(_Info) ->
-%     %   info.stringify_keys!
-%     %   chargify_id = info.delete('id')
-%     %   response = Hashie::Mash.new(put("/customers/#{chargify_id}.json", :body => {:customer => info}))
-%     %   return response.customer unless response.customer.to_a.empty?
-%     %   response
-%     % end
-%     pass().
+update_customer(Info) ->
+    gen_server:call(?MODULE, {update_customer, Info}).
 
-% customer_subscriptions(_ChargifyId) ->
-%     %   subscriptions = get("/customers/#{chargify_id}/subscriptions.json")
-%     %   subscriptions.map{|s| Hashie::Mash.new s['subscription']}
-%     % end
-%     pass().    
+customer_subscriptions(ChargifyId) when is_integer(ChargifyId) ->
+    customer_subscriptions(integer_to_list(ChargifyId));
+customer_subscriptions(ChargifyId) when is_list(ChargifyId) ->
+    gen_server:call(?MODULE, {customer_subscriptions, ChargifyId}).
 
 % subscription(_SubscriptionId) ->
 %     %   raw_response = get("/subscriptions/#{subscription_id}.json")
