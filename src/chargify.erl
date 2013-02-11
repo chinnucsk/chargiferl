@@ -13,7 +13,7 @@
 
 %%--------------------------------------------------------------------
 %% External exports
--export([start_link/0, start/0, stop/0]).
+-export([start_link/1, start/1, stop/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -55,11 +55,7 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {
-          subdomain :: string(),
-          api_secret :: string()
-          }).
--type state() :: #state{}.
+-include("chargify.hrl").
 
 -type value() :: term().
 -type header() :: atom() | string().
@@ -78,18 +74,6 @@
 -type url() :: string().
 -type body() :: string().
 
-
--record(customer, {
-          first_name :: string(),
-          last_name :: string(),
-          email :: string(),
-          organization :: string(),
-          reference :: string()
-          }).
-
-
--type customer() :: #customer{}.
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -101,11 +85,11 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(ChargifyState) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [ChargifyState], []).
 
-start() ->
-    gen_server:start({local, ?MODULE}, ?MODULE, [], [{debug, []}]).
+start(ChargifyState) ->
+    gen_server:start({local, ?MODULE}, ?MODULE, [ChargifyState], [{debug, []}]).
 
 stop() ->
     case catch gen_server:call(ibrowse, stop) of
@@ -131,8 +115,8 @@ stop() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    {ok, #state{}}.
+init([ChargifyState | _Rest]) ->
+    {ok, ChargifyState}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -148,10 +132,23 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
-
+% handle_call(_Request, _From, State) ->
+%     Reply = ok,
+%     {reply, Reply, State};
+handle_call(list_customers, _From, State) ->
+    ResourcePath = "/customers.json",
+    Reply = get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])),
+    {reply, Reply, State};
+handle_call({customer_by_id, ChargifyId}, _From, State) ->
+    ResourcePath = "/customers/" ++ ChargifyId ++ ".json",
+    get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]));
+handle_call({customer_by_reference, ChargifyReference}, _From, State) ->
+    ResourcePath = "/customers/lookup.json?reference=" ++ ChargifyReference,
+    get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]));
+handle_call({create_customer, Info}, _From, State) ->
+    ResourcePath = "/customers.json",
+    post(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]), build_body({customer, Info})).
+    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -237,38 +234,26 @@ build_body(Body) ->
 
 -spec add_auth(state(), headerlist()) -> headerlist().
 add_auth(ChargifyState, HeaderList) ->
-    AuthorizationData = "Basic " ++ binary_to_list(base64:encode(ChargifyState#state.subdomain ++ ":x")),
+    AuthorizationData = "Basic " ++ binary_to_list(base64:encode(ChargifyState#state.api_secret ++ ":x")),
     [{"Authorization", AuthorizationData } | HeaderList].
 
 -spec list_customers() -> [customer()].
 list_customers() ->
-    ChargifyState = #state{subdomain = "opscode-preprod",
-                                    api_secret = "mTTHZMYQZyR72g-bGkux"},
-    ResourcePath = "/customers.json",
-    get(build_url(ChargifyState, ResourcePath), add_auth(ChargifyState,[{accept, "application/json"}])).
+    gen_server:call(?MODULE, list_customers).
 
 -spec customer_by_id(string() | integer()) -> customer().
 customer_by_id(ChargifyId) when is_integer(ChargifyId) ->
-    customer_by_id(binary_to_list(ChargifyId));
+    customer_by_id(integer_to_list(ChargifyId));
 customer_by_id(ChargifyId) when is_list(ChargifyId) ->
-    ChargifyState = #state{subdomain = "opscode-preprod",
-                                    api_secret = "mTTHZMYQZyR72g-bGkux"},
-    ResourcePath = "/customers/" ++ ChargifyId ++ ".json",
-    get(build_url(ChargifyState, ResourcePath), add_auth(ChargifyState,[{accept, "application/json"}])).
+    gen_server:call(?MODULE, {customer_by_id, ChargifyId}).
 
 -spec customer_by_reference(string()) -> customer().
-customer_by_reference(ReferenceId) ->
-    ChargifyState = #state{subdomain = "opscode-preprod",
-                                    api_secret = "mTTHZMYQZyR72g-bGkux"},
-    ResourcePath = "/customers/lookup.json?reference=" ++ ReferenceId,
-    get(build_url(ChargifyState, ResourcePath), add_auth(ChargifyState,[{accept, "application/json"}])).
+customer_by_reference(ChargifyReference) ->
+    gen_server:call(?MODULE, {customer_by_reference, ChargifyReference}).
 
 -spec create_customer(customer()) -> string().
 create_customer(Info) ->
-    ChargifyState = #state{subdomain = "opscode-preprod",
-                                    api_secret = "mTTHZMYQZyR72g-bGkux"},    
-    ResourcePath = "/customers.json",
-    post(build_url(ChargifyState, ResourcePath), add_auth(ChargifyState,[{accept, "application/json"}]), build_body({customer, Info})).
+    gen_server:call(?MODULE, {create_customer, Info}).
 
 %     % * first_name (Required)
 %     % * last_name (Required)
