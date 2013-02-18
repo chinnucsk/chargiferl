@@ -25,7 +25,9 @@
          customer_by_id/1,
          customer_by_reference/1,
          create_customer/1,
-         update_customer/1,
+         create_customer/4,
+         create_customer/5,         
+         update_customer/2,
          customer_subscriptions/1,
          get_subscription/1,
          list_products/0         
@@ -63,12 +65,12 @@
 -type header() :: atom() | string().
 -type headerlist() :: [{header(), value()}].
 -type method() :: get | post | head | options | put | delete | trace | mkcol | propfind | proppatch | lock | unlock | move | copy.
-%% -type status() :: string().
-%% -type responseheaders() :: [respHeader()].
-%% -type respheader() :: {headerName(), headerValue()}.
-%% -type headername() :: string().
-%% -type headervalue() :: string().
--type response() :: {ok, status, responseheaders, responsebody} | {ibrowse_req_id, req_id()} | {error, reason}.
+-type status() :: string().
+-type headername() :: string().
+-type headervalue() :: string().
+-type respheader() :: {headername(), headervalue()}.
+-type responseheaders() :: [respheader()].
+-type response() :: {ok, status(), responseheaders(), responsebody()} | {ibrowse_req_id, req_id()} | {error, reason}.
 -type req_id() :: term().
 -type responsebody() :: string() | {file, filename}.
 %% -type reason() :: term().
@@ -138,36 +140,36 @@ init([ChargifyState | _Rest]) ->
 %     Reply = ok,
 %     {reply, Reply, State};
 handle_call(list_customers, _From, State) ->
-    ResourcePath = "/customers.json",
-    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])),
+    ResourcePath = "/customers",
+    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{"Accept", "application/json"}, {"Content-Type", "application/json"}])),
     {reply, ejson:decode(ResponseBody), State};
 handle_call({customer_by_id, ChargifyId}, _From, State) ->
-    ResourcePath = "/customers/" ++ ChargifyId ++ ".json",
-    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])),
+    ResourcePath = "/customers/" ++ ChargifyId,
+    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{"Accept", "application/json"}, {"Content-Type", "application/json"}])),
     {reply, ejson:decode(ResponseBody), State};
 handle_call({customer_by_reference, ChargifyReference}, _From, State) ->
     ResourcePath = "/customers/lookup.json?reference=" ++ ChargifyReference,
-    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])),
+    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{"Accept", "application/json"}])),
     {reply, ejson:decode(ResponseBody), State};
 handle_call({create_customer, Info}, _From, State) ->
-    ResourcePath = "/customers.json",
-    Reply = post(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]), build_body({customer, Info})),
+    ResourcePath = "/customers",
+    Reply = post(build_url(State, ResourcePath), add_auth(State,[{"Accept", "application/json"}, {"Content-Type", "application/json"}]), build_body(Info)),
     {reply, Reply, State};
-handle_call({update_customer, Info}, _From, State) ->
-    ResourcePath = "/customers.json",
-    Reply = put(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}]), build_body({customer, Info})),
+handle_call({update_customer, ChargifyId, Info}, _From, State) ->
+    ResourcePath = "/customers/" ++ ChargifyId,
+    Reply = put(build_url(State, ResourcePath), add_auth(State,[{"Accept", "application/json"}, {"Content-Type", "application/json"}]), build_body(Info)),
     {reply, Reply, State};
 handle_call({customer_subscriptions, ChargifyId}, _From, State) ->
     ResourcePath = "/customers/" ++ ChargifyId ++ "/subscriptions.json",
-    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])),
+    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{"Accept", "application/json"}, {"Content-Type", "application/json"}])),
     {reply, ejson:decode(ResponseBody), State};
 handle_call({subscription, SubscriptionId}, _From, State) ->
     ResourcePath = "/subscriptions/" ++ SubscriptionId ++ ".json",
-    Reply = get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])),
+    Reply = get(build_url(State, ResourcePath), add_auth(State,[{"Accept", "application/json"}, {"Content-Type", "application/json"}])),
     {reply, Reply, State};
 handle_call(list_products, _From, State) ->
     ResourcePath = "/products.json",
-    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{accept, "application/json"}])),
+    {ok, _Status, _ResponseHeaders, ResponseBody} = get(build_url(State, ResourcePath), add_auth(State,[{"Accept", "application/json"}, {"Content-Type", "application/json"}])),
     {reply, ejson:decode(ResponseBody), State}.
 
 %%--------------------------------------------------------------------
@@ -250,8 +252,10 @@ build_url(ChargifyState, ResourcePath) ->
     "https://" ++ ChargifyState#chargify_state.subdomain ++ ".chargify.com" ++ ResourcePath.
 
 -spec build_body(tuple()) -> string().
-build_body(Body) ->
-    ejson:encode({[Body]}).
+build_body(BodyTuple) ->
+    BodyJSON = ejson:encode(BodyTuple),
+    io:format("JSON body '~s'~n", [BodyJSON]),
+    BodyJSON.
 
 -spec add_auth(chargify_state(), headerlist()) -> headerlist().
 add_auth(ChargifyState, HeaderList) ->
@@ -277,9 +281,25 @@ create_customer(Info) ->
     gen_server:call(?MODULE, {create_customer, Info}).
 
 -spec create_customer(string(),string(),string(),string()) -> string().
-create_customer(FirstName, LastName, Email, Organization) ->
-    gen_server:call(?MODULE, {create_customer, #create_customer{first_name = FirstName, last_name = LastName,
-                                                         email = Email, organization = Organization}}).
+create_customer(FirstName, LastName, Email, Organization) when is_list(FirstName) andalso
+                                                               is_list(LastName) andalso
+                                                               is_list(Email) andalso
+                                                               is_list(Organization) ->
+    [FirstNameBin, LastNameBin, EmailBin, OrgBin] = [list_to_binary(T) || T <- [FirstName, LastName, Email, Organization]],
+    Info = {[{<<"customer">>,
+              {[{<<"country">>,null},
+                {<<"address_2">>,null},
+                {<<"zip">>,null},
+                {<<"email">>,EmailBin},
+                {<<"organization">>,
+                 OrgBin},
+                {<<"last_name">>,LastNameBin},
+                {<<"phone">>,null},
+                {<<"state">>,null},
+                {<<"first_name">>,FirstNameBin},
+                {<<"address">>,null}]}}]},
+    create_customer(Info).
+
 -spec create_customer(string(),string(),string(),string(),string()) -> string().
 create_customer(FirstName, LastName, Email, Organization, Reference) ->
     gen_server:call(?MODULE, {create_customer, #create_customer{first_name = FirstName, last_name = LastName,
@@ -296,10 +316,12 @@ create_customer(FirstName, LastName, Email, Organization, Reference) ->
 %     % * organization (Optional) Company/Organization name
 %     % * reference (Optional, but encouraged) The unique identifier used within your own application for this customer
 %     %
--spec update_customer(create_customer()) ->
+-spec update_customer(string() | integer(), create_customer()) ->
      string().
-update_customer(Info) ->
-    gen_server:call(?MODULE, {update_customer, Info}).
+update_customer(ChargifyId, Info) when is_integer(ChargifyId) ->
+    update_customer(integer_to_list(ChargifyId), Info);
+update_customer(ChargifyId, Info) when is_list(ChargifyId) ->
+    gen_server:call(?MODULE, {update_customer, ChargifyId, Info}).
 
 customer_subscriptions(ChargifyId) when is_integer(ChargifyId) ->
     customer_subscriptions(integer_to_list(ChargifyId));
@@ -437,4 +459,3 @@ list_products() ->
 %       % Hashie::Mash.new(response)
 %    pass(). 
 
-    

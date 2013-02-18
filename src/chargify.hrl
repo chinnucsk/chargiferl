@@ -22,9 +22,9 @@
           organization :: string(),
           reference :: string(),
           vat_number :: string(),
-          
-          updated_at :: string(),
-          created_at :: string()
+
+          created_at :: string(),
+          updated_at :: string()
           }).
 
 -type read_customer() :: #read_customer{}.

@@ -26,7 +26,7 @@ $(DEPS):
 eunit: compile
 	@rebar skip_deps=true eunit
 
-generate:
+release: clean compile
 	@rebar generate
 
 test: eunit
